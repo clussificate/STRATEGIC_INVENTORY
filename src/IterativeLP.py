@@ -2,7 +2,7 @@
 """
 @Created at 2020/8/14 16:57
 @Author: Kurt
-@file:heuristics.py
+@file:IterativeLP.py
 @Desc:
 """
 from gurobipy import GRB
@@ -117,7 +117,7 @@ class IterativeLP:
             if self.alpha[i] * net_replenishment_period == truth_function(net_replenishment_period):
                 continue
             else:
-                self.alpha[i] = truth_function(net_replenishment_period)/net_replenishment_period
+                self.alpha[i] = truth_function(net_replenishment_period) / net_replenishment_period
 
     def cal_optimal_value(self):
         optimal_value = 0
@@ -127,6 +127,7 @@ class IterativeLP:
             optimal_value += truth_function(net_replenishment_period)
 
         return optimal_value
+
 
 if __name__ == "__main__":
     print("time:")
