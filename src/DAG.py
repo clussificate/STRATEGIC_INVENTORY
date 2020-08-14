@@ -8,16 +8,17 @@
 from random import randint
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot, graphviz_layout
+import matplotlib.pyplot as plt
 
 
 def gen_DAG(min_weight=3, max_weight=5, min_height=1, max_height=5,
             percent=30, save="DAG.txt"):
     """
     Randomly generate a DAG type supply chain
-    :param min_weight: minimal length of the supply chain
-    :param max_weight: maximal length of the supply chain
-    :param min_height: minimal number of nodes of each echelon
-    :param max_height: maximal number of nodes of each echelon
+    :param min_weight: minimal number of nodes of each echelon
+    :param max_weight: maximal number of nodes of each echelon
+    :param min_height: minimal length of the supply chain
+    :param max_height: maximal length of the supply chain
     :param percent: probability of generating a link
     :param save: file path
     :return: None
@@ -50,7 +51,10 @@ def vis_graph(file):
     write_dot(G, 'DAG.dot')
     pos = graphviz_layout(G, prog='dot')
     nx.draw(G, pos, with_labels=True, font_weight='bold')
+    plt.show()
 
 
 if __name__ == "__main__":
-    gen_DAG()
+    gen_DAG(min_weight=5, max_weight=10, min_height=5, max_height=6,
+            percent=10, save="DAG.txt")
+    # vis_graph("DAG.txt")

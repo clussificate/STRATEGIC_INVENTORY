@@ -21,7 +21,8 @@ def gen_holding_cost(node, mode):
     if str.lower(mode) == "random" or "r":
         return randint(1, 20)
     elif str.lower(mode) == 'increase' or "i":
-        node
+        "TODO"
+        pass
     else:
         raise DefinedException("Incorrect mode")
 
@@ -41,17 +42,13 @@ class BOMGraph:
             for line in f:
                 source, sink = line.strip().split('\t')
                 if source not in self.nodes.keys():
-                    res = {}
-                    res['sink'] = [sink]
-                    res['source'] = []
+                    res = {'sink': [sink], 'source': []}
                     self.nodes[source] = res
                 else:
                     self.nodes[source]['sink'].append(sink)
 
                 if sink not in self.nodes.keys():
-                    res = {}
-                    res['source'] = [source]
-                    res['sink'] = []
+                    res = {'source': [source], 'sink': []}
                     self.nodes[sink] = res
                 else:
                     self.nodes[sink]['source'].append(source)
@@ -76,3 +73,4 @@ class BOMGraph:
 if __name__ == "__main__":
     bom = BOMGraph("DAG.txt")
     print(bom.nodes)
+    print(len(bom.nodes))
