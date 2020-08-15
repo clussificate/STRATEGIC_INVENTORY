@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-@Created at 2020/8/14 16:57
+@Created at 2020/8/15 10:11
 @Author: Kurt
-@file:IterativeLP.py
+@file:IterativeMIP.py
 @Desc:
 """
 from gurobipy import GRB
@@ -10,66 +10,51 @@ import gurobipy as gp
 import numpy as np
 from BOMGraph import BOMGraph
 from utils import DefinedException
+from IterativeLP import IterativeLP
 
 truth_function = np.sqrt
+M = 9999
 
 
-class IterativeLP:
-    def __init__(self, nodes, epsilon=0.01):
-        self.epsilon = epsilon
-        self.iteration = 0
-        self.nodes = nodes
-        self.N = len(self.nodes)
-        # initial alpha for each node
-        self.alpha = dict(zip(self.nodes.keys(), [1] * self.N))
+def cal_coefficient(x):
+    """
+    :return: derivation and intercept of sqrt function
+    """
+    if x ==0:
+        return 0, 0
+    derivation = (1/2) * np.power(x, -1/2)
+    intercept = 1/2 * np.power(x, 1/2)
+    return derivation, intercept
 
-        # initial model
-        self.model = gp.Model("IterativeLP")
-        # outbound service time, S
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
-         for node in self.nodes.keys()]
-        #  inbound service time, SI
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="SI_" + node)
-         for node in self.nodes.keys()]
 
+class IterativeMIP(IterativeLP):
+    def __init__(self, nodes, epsilon=0.1):
+        super().__init__(nodes, epsilon)
+        self.alpha = dict(zip(self.nodes.keys(), [1 / 2] * self.N))
+        self.beta = dict(zip(self.nodes.keys(), [1 / 2] * self.N))
+        self.model.addVar(vtype=GRB.BINARY, name='y')
+        self.model.setParam("OutputFlag", False)
         self.model.update()
-
-        # add constraints
         for j, info in self.nodes.items():
             S = self.model.getVarByName("S_" + j)
             SI = self.model.getVarByName("SI_" + j)
             lead_time = info['lead_time']
-            self.model.addConstr(S - SI, GRB.LESS_EQUAL, lead_time)
-
-            if not info['sink']:
-                S_bar = info['demand_service_time']
-                self.model.addConstr(S, GRB.LESS_EQUAL, S_bar)
-
-            for i in info['source']:
-                S_i = self.model.getVarByName("S_" + i)
-                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0)
-
-        # add objective function
-        self.obj = None
-        self.optimal_value = None
-        # print(self.model.getVars())
+            self.model.addConstr((SI+lead_time-S), GRB.LESS_EQUAL, M*self.model.getVarByName("y"))
 
     def termination_criterion(self):
 
         flag = False
         error = 0
+        # print("current alpha: {}".format(self.alpha))
+        # print("current beta: {}".format(self.beta))
         for i, info in self.nodes.items():
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x)
 
-            # print("Net replenishment: {} ".format(net_replenishment_period))
-            # print("alpha:{}".format(self.alpha[i]))
-            # print("holding_cost:{}".format(info['holding_cost']))
-            # print("current error:{}".format(info['holding_cost'] * abs(
-            #     self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))))
+            y = self.model.getVarByName("y").x
 
             error += info['holding_cost'] * abs(
-                self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))
+                (self.alpha[i] * net_replenishment_period + y * self.beta[i]) - truth_function(net_replenishment_period))
             # print("Cum error: {}".format(error))
         print("Current error: {} of iteration: {}".format(error, self.iteration))
         if error <= self.epsilon / self.N:
@@ -78,13 +63,16 @@ class IterativeLP:
         return flag
 
     def iteration_process(self):
-        while True:
+        k=0
+        while True and k<3:
             self.iteration += 1
-            # print(self.iteration)
+            k+=1
             self.optimization()
 
             if self.model.status == GRB.OPTIMAL:
-                print("Solution: \n {}".format(self.model.getVars()))
+                print("Current appr obj value: {}".format(self.model.objVal))
+                print("Current true obj value: {}".format(self.cal_optimal_value()))
+                # print("Solution: \n {}".format(self.model.getVars()))
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
@@ -97,10 +85,16 @@ class IterativeLP:
         for i, info in self.nodes.items():
             SI = self.model.getVarByName("SI_" + i)
             S = self.model.getVarByName("S_" + i)
+            y = self.model.getVarByName("y")
             lead_time = info['lead_time']
             holding_cost = info['holding_cost']
             alpha = self.alpha[i]
-            self.obj += holding_cost * alpha * (SI + lead_time - S)
+            beta = self.beta[i]
+
+            if self.iteration > 1:
+                print("y: {}".format(y))
+                print("X: {}".format(SI.x+lead_time-S.x))
+            self.obj += holding_cost * (alpha * (SI + lead_time - S) + y * beta)
         self.model.setObjective(self.obj, GRB.MINIMIZE)
 
         self.model.optimize()
@@ -110,16 +104,19 @@ class IterativeLP:
             # print(self.model.getVarByName("S_" + i).x)
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x)
-            if self.alpha[i] * net_replenishment_period == truth_function(net_replenishment_period):
+            y = self.model.getVarByName("y").x
+
+            if (self.alpha[i] * net_replenishment_period + y * self.beta[i]) == truth_function(net_replenishment_period):
                 continue
             else:
-                self.alpha[i] = truth_function(net_replenishment_period) / net_replenishment_period
+                self.alpha[i], self.beta[i] = cal_coefficient(net_replenishment_period)
 
     def cal_optimal_value(self):
         optimal_value = 0
         for i, info in self.nodes.items():
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x)
+
             optimal_value += truth_function(net_replenishment_period)
 
         return optimal_value
@@ -129,6 +126,6 @@ if __name__ == "__main__":
     print("time:")
     Nodes = BOMGraph("DAG.txt").nodes
     # print(Nodes)
-    ILP = IterativeLP(nodes=Nodes)
-    ILP.iteration_process()
-    print("Optimal value: {}".format(ILP.optimal_value))
+    IMIP = IterativeMIP(nodes=Nodes)
+    IMIP.iteration_process()
+    print("Optimal value: {}".format(IMIP.optimal_value))
