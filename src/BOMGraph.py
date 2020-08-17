@@ -7,7 +7,8 @@
 """
 from random import randint
 from utils import DefinedException
-
+import random
+random.seed(1994)
 
 def gen_gurateed_service_times():
     return randint(1, 10)

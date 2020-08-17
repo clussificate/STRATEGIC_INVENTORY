@@ -22,15 +22,17 @@ def gen_DAG(min_weight=3, max_weight=5, min_height=1, max_height=5,
     :param percent: probability of generating a link
     :param save: file path
     :return: None
+    todo: fix the bug that the disconnected graph is generated when probability is small. Hint: make sure more than one link between two lays
     """
-    nodes = 0
+    nodes = min_weight + randint(0, max_weight - min_weight)
+    print("initial nodes: {}".format(nodes))
     heights = min_height + randint(0, max_height - min_height)
     print("Heights: {}".format(heights))
     with open(save, 'w') as f:
         for i in range(0, heights + 1):  # no action in loop 0, so increase 1.
             new_nodes = min_weight + randint(0, max_weight - min_weight)
-            print("Weights: {}，loop {}".format(new_nodes, i))
-
+            # print("Weights: {}，loop {}".format(new_nodes, i))
+            print("Gen new nodes: {}".format(new_nodes))
             for j in range(0, nodes):
                 for k in range(0, new_nodes):
                     if randint(0, 100) < percent:
@@ -55,6 +57,7 @@ def vis_graph(file):
 
 
 if __name__ == "__main__":
-    gen_DAG(min_weight=5, max_weight=10, min_height=5, max_height=6,
-            percent=10, save="DAG.txt")
-    # vis_graph("DAG.txt")
+    # gen_DAG(min_weight=3, max_weight=5, min_height=3, max_height=5,
+    #         percent=30, save="DAG.txt")
+    vis_graph("DAG.txt")
+

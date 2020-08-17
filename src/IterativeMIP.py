@@ -125,7 +125,7 @@ class IterativeMIP(IterativeLP):
 if __name__ == "__main__":
     print("time:")
     Nodes = BOMGraph("DAG.txt").nodes
-    # print(Nodes)
+    print(Nodes)
     IMIP = IterativeMIP(nodes=Nodes)
     IMIP.iteration_process()
     print("Optimal value: {}".format(IMIP.optimal_value))
