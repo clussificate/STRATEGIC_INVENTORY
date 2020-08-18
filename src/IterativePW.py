@@ -10,6 +10,7 @@ import gurobipy as gp
 from gurobipy import GRB
 from BOMGraph import BOMGraph
 from utils import DefinedException
+import time
 
 true_function = np.sqrt
 
@@ -135,7 +136,7 @@ class IterativePW:
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = round(max(self.SI[j].x + info['lead_time'] - self.S[j].x, 0),3)
+            net_replenishment_period = round(max(self.SI[j].x + info['lead_time'] - self.S[j].x, 0), 3)
             # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
             optimal_value += info['lead_time']*true_function(net_replenishment_period)
@@ -201,8 +202,10 @@ class IterativePW:
             update_M.insert(interval_index + 1, net_replenishment_period)
             self.M[j] = update_M
 
-            if sorted(update_M) != update_M: raise DefinedException("Incorrect M")
-            if len(set(update_M)) != len(update_M): raise DefinedException("Incorrect M")
+            if sorted(update_M) != update_M:
+                raise DefinedException("Incorrect M")
+            if len(set(update_M)) != len(update_M):
+                raise DefinedException("Incorrect M")
 
             print("update para alpha:{}".format(self.alpha[j]))
             print("update para beta:{}".format(self.beta[j]))
@@ -241,12 +244,14 @@ def parse_results(instance: IterativePW) -> None:
 
 
 if __name__ == "__main__":
-    print("time:")
     Nodes = BOMGraph("DAG.txt").nodes
     # print(Nodes)
     IterativePW = IterativePW(nodes=Nodes)
+    start = time.time()
     IterativePW.iter_process()
     IterativePW.cal_optimal_value()
     print("optimal value: {}".format(IterativePW.optimal_value))
     parse_results(IterativePW)
+    print("Used cpu time：{}".format(time.time() - start))
     # print(IterativePW.model.getConstrs())
+

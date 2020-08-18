@@ -10,6 +10,7 @@ import gurobipy as gp
 import numpy as np
 from BOMGraph import BOMGraph
 from utils import DefinedException
+import time
 
 truth_function = np.sqrt
 
@@ -143,9 +144,11 @@ def parse_results(instance: IterativeLP) -> None:
 
 
 if __name__ == "__main__":
-    print("time:")
+
     Nodes = BOMGraph("DAG.txt").nodes
+    start = time.time()
     ILP = IterativeLP(nodes=Nodes)
     ILP.iteration_process()
     print("Optimal value: {}".format(ILP.optimal_value))
     parse_results(ILP)
+    print("Used cpu time：{}".format(time.time()-start))
