@@ -149,7 +149,7 @@ class IterativeSCA:
             net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x,  3)
             # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
-            optimal_value += info['lead_time']*true_function(net_replenishment_period)
+            optimal_value += info['holding_cost'] * true_function(net_replenishment_period)
 
         return optimal_value
 

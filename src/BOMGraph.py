@@ -12,7 +12,7 @@ random.seed(1994)
 
 
 def gen_gurateed_service_times():
-    return randint(1, 10)
+    return randint(1, 5)
 
 
 def gen_leadtime():

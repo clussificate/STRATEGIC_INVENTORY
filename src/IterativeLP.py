@@ -26,6 +26,7 @@ class IterativeLP:
 
         # initial model
         self.model = gp.Model("IterativeLP")
+        self.model.setParam("OutputFlag",False)
 
         # outbound service time, S
         [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
@@ -133,7 +134,8 @@ class IterativeLP:
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
-            optimal_value += info['lead_time'] * truth_function(round(net_replenishment_period,3))
+            optimal_value += info['holding_cost'] * truth_function(round(net_replenishment_period, 3))
+
         return optimal_value
 
 
@@ -142,6 +144,7 @@ def parse_results(instance: IterativeLP) -> None:
         SI = instance.model.getVarByName("SI_"+j)
         S = instance.model.getVarByName("S_" + j)
         print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+        print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ def vis_graph(file):
 
 
 if __name__ == "__main__":
-    gen_DAG(min_weight=3, max_weight=5, min_height=3, max_height=5,
+    gen_DAG(min_weight=300, max_weight=500, min_height=3, max_height=5,
             percent=30, save="DAG.txt")
-    vis_graph("DAG.txt")
+    # vis_graph("DAG.txt")
 

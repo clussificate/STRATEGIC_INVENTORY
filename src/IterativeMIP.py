@@ -97,10 +97,8 @@ class IterativeMIP(IterativeLP):
             holding_cost = info['holding_cost']
             alpha = self.alpha[j]
             beta = self.beta[j]
-
             self.obj += holding_cost * (alpha * (SI + lead_time - S) + y * beta)
         self.model.setObjective(self.obj, GRB.MINIMIZE)
-
         self.model.optimize()
 
     def update_para(self):
@@ -124,11 +122,11 @@ class IterativeMIP(IterativeLP):
 
     def cal_optimal_value(self):
         optimal_value = 0
-        for i, info in self.nodes.items():
-            net_replenishment_period = round((
-                    self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x),3)
+        for j, info in self.nodes.items():
+            net_replenishment_period = (
+                    self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
 
-            optimal_value += info['lead_time'] * truth_function(net_replenishment_period)
+            optimal_value += info['holding_cost'] * truth_function(round(net_replenishment_period,3))
 
         return optimal_value
 
@@ -138,6 +136,7 @@ def parse_result(instance:IterativeMIP) -> None:
         SI = instance.model.getVarByName("SI_"+j)
         S = instance.model.getVarByName("S_" + j)
         print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+        print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
 
 
 if __name__ == "__main__":
