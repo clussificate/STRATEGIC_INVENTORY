@@ -85,8 +85,8 @@ class IterativePW:
         while True:
             print("******************************* New Iteration ********************************************")
             self.iteration += 1
-            self.optimization()
             print("Current iter: {}".format(self.iteration))
+            self.optimization()
 
             if self.model.status == GRB.OPTIMAL:
                 # print("Solution: \n {}".format(self.model.getVars()))
@@ -122,7 +122,7 @@ class IterativePW:
             appr_function = sum(
                 [self.beta[j][r] * self.u[j, r].x + self.alpha[j][r] * self.z[j, r].x for r in range(self.R[j])])
             # if net_replenishment_period == np.nan: print(net_replenishment_period)
-            err += info['holding_cost'] * abs(appr_function - true_function(max(net_replenishment_period, 0)))
+            err += info['holding_cost'] * abs(appr_function - true_function(round(net_replenishment_period, 3)))
         print("Current error: {} of iteration: {}".format(err, self.iteration))
 
         if err <= self.epsilon / self.N:
@@ -136,7 +136,7 @@ class IterativePW:
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = round(max(self.SI[j].x + info['lead_time'] - self.S[j].x, 0), 3)
+            net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x,  3)
             # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
             optimal_value += info['lead_time']*true_function(net_replenishment_period)

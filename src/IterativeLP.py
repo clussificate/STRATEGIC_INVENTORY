@@ -84,6 +84,7 @@ class IterativeLP:
         while True:
             print("*********************New Iteration***********************")
             self.iteration += 1
+            print("Current iter: {}".format(self.iteration))
             # print(self.iteration)
             # print(self.nodes)
             # print(self.model.getConstrs())

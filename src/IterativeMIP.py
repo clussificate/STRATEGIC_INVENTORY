@@ -68,13 +68,12 @@ class IterativeMIP(IterativeLP):
         self.update_error = error
         return flag
 
-
     def iteration_process(self):
         while True:
             print("************************* New Iteration ***********************************")
             self.iteration += 1
-            self.optimization()
             print("Current iter: {}".format(self.iteration))
+            self.optimization()
 
             if self.model.status == GRB.OPTIMAL:
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
