@@ -82,13 +82,14 @@ class IterativePW:
 
     def iter_process(self):
         while True:
+            print("******************************* New Iteration ********************************************")
             self.iteration += 1
             self.optimization()
-            print("******************************* New Iteration ********************************************")
             print("Current iter: {}".format(self.iteration))
 
             if self.model.status == GRB.OPTIMAL:
                 # print("Solution: \n {}".format(self.model.getVars()))
+                print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
@@ -103,7 +104,7 @@ class IterativePW:
         """ Objective functions are updated here"""
         self.obj = gp.LinExpr()
         for j, info in self.nodes.items():
-            holding_cost = info['lead_time']
+            holding_cost = info['holding_cost']
             val = 0
             for r in range(self.R[j]):
                 val += self.u[j, r] * self.beta[j][r] + self.z[j, r] * self.alpha[j][r]
@@ -134,8 +135,10 @@ class IterativePW:
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = self.SI[j].x + info['lead_time'] - self.S[j].x
-            optimal_value = true_function(max(net_replenishment_period, 0))
+            net_replenishment_period = round(max(self.SI[j].x + info['lead_time'] - self.S[j].x, 0),3)
+            # print(net_replenishment_period)
+            # print("current j:{}, net x:{}".format(j, net_replenishment_period))
+            optimal_value += info['lead_time']*true_function(net_replenishment_period)
 
         return optimal_value
 
@@ -230,6 +233,12 @@ class IterativePW:
         self.u = self.model.addVars(ind_variables, vtype=GRB.BINARY, name='u')
 
 
+def parse_results(instance: IterativePW) -> None:
+    for j, _ in instance.nodes.items():
+        SI = instance.SI[j]
+        S = instance.S[j]
+        print("Node: {}, SI:{}, S: {}".format(j, round(SI.x, 3), round(S.x,3)))
+
 
 if __name__ == "__main__":
     print("time:")
@@ -239,4 +248,5 @@ if __name__ == "__main__":
     IterativePW.iter_process()
     IterativePW.cal_optimal_value()
     print("optimal value: {}".format(IterativePW.optimal_value))
+    parse_results(IterativePW)
     # print(IterativePW.model.getConstrs())
