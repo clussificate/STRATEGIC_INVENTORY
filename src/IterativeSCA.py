@@ -12,6 +12,7 @@ from BOMGraph import BOMGraph
 from utils import DefinedException
 from IterativeLP import IterativeLP
 import time
+import random
 
 true_function = np.sqrt
 M = 9999
@@ -29,15 +30,26 @@ def cal_coefficient(x):
 
 
 class IterativeSCA:
-    def __init__(self, nodes, epsilon=0.1):
+    def __init__(self, nodes, epsilon=0.1, start_point=None):
         self.epsilon = epsilon
         self.iteration = 0
         self.nodes = {int(k): v for k, v in nodes.items()}
         self.N = len(self.nodes)
 
-        # initial parameters
-        self.alpha = dict(zip(self.nodes.keys(), [-1 / 2] * self.N))
-        self.beta = dict(zip(self.nodes.keys(), [-1 / 2] * self.N))
+        self.start_point = start_point
+        if isinstance(self.start_point, (int, float)):
+            initial_alpha, initial_beta = cal_coefficient(self.start_point)
+
+            # initial parameters
+            self.alpha = dict(zip(self.nodes.keys(), [initial_alpha] * self.N))
+            self.beta = dict(zip(self.nodes.keys(), [initial_beta] * self.N))
+        elif str.lower(self.start_point) == "random":
+            initial_alphas = [cal_coefficient(random.randint(1, 10))[0] for _ in self.nodes.keys()]
+            initial_betas = [cal_coefficient(random.randint(1, 10))[1] for _ in self.nodes.keys()]
+            self.alpha = dict(zip(self.nodes.keys(), initial_alphas))
+            self.beta = dict(zip(self.nodes.keys(), initial_betas))
+        else:
+            raise DefinedException("Incorrect parameter for start_point")
 
         # initial model
         self.model = gp.Model("IterativeSCA")
@@ -86,14 +98,14 @@ class IterativeSCA:
             self.optimization()
 
             if self.model.status == GRB.OPTIMAL:
+                print("Current optimal solution of approximation function: {}".format(self.model.getObjective().getValue()))
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
-                # print("Current appr obj value: {}".format(self.model.objVal))
-                # print("Current true obj value: {}".format(self.cal_optimal_value()))
                 # print("Solution: \n {}".format(self.model.getVars()))
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
                 self.update_para()
+                self.update_model()  # we need to update model, because params alpha and beta are changed.
             else:
                 raise DefinedException("No solutions.")
 
@@ -104,7 +116,6 @@ class IterativeSCA:
             t = self.t[j]
             self.obj += holding_cost * t
         self.model.setObjective(self.obj, GRB.MINIMIZE)
-
         self.model.optimize()
 
     def termination_criterion(self):
@@ -130,6 +141,7 @@ class IterativeSCA:
             net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x, 3)
 
             print("---------------------------------------")
+            print("Current node: {}".format(j))
             print("Current Net X:{}".format(net_replenishment_period))
             print("previous alpha: {}".format(self.alpha[j]))
             print("previous beta: {}".format(self.beta[j]))
@@ -146,12 +158,25 @@ class IterativeSCA:
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x,  3)
+            net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x, 3)
             # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
             optimal_value += info['holding_cost'] * true_function(net_replenishment_period)
 
         return optimal_value
+
+    def update_model(self):
+        # Iteration constraints
+        self.model.remove(self.c1)
+
+        # Iteration constraints
+        self.c1 = self.model.addConstrs((- self.t[j] -
+                                         (self.alpha[j] *
+                                          (self.SI[j] + self.nodes[j]['lead_time'] - self.S[j])
+                                          + self.beta[j]) <= 0
+                                         for j in self.nodes.keys()))
+        self.model.update()
+
 
 
 def parse_results(instance: IterativeSCA) -> None:
@@ -159,18 +184,17 @@ def parse_results(instance: IterativeSCA) -> None:
         SI = instance.SI[j]
         S = instance.S[j]
         print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+        print("Net replenishment period: {}".format(SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":
     Nodes = BOMGraph("DAG.txt").nodes
-    # print(Nodes)
-    IterativeSCA = IterativeSCA(nodes=Nodes)
+
+    IterativeSCA = IterativeSCA(nodes=Nodes, start_point='random')
     start = time.time()
     IterativeSCA.iter_process()
     IterativeSCA.cal_optimal_value()
     print("optimal value: {}".format(IterativeSCA.optimal_value))
     parse_results(IterativeSCA)
     print("Used cpu time：{}".format(time.time() - start))
-    # print(IterativePW.model.getConstrs())
-
 

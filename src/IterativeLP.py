@@ -26,7 +26,7 @@ class IterativeLP:
 
         # initial model
         self.model = gp.Model("IterativeLP")
-        self.model.setParam("OutputFlag",False)
+        self.model.setParam("OutputFlag", False)
 
         # outbound service time, S
         [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
@@ -98,6 +98,7 @@ class IterativeLP:
                     self.optimal_value = self.cal_optimal_value()
                     break
                 self.update_para()
+                self.update_model()
             else:
                 raise DefinedException("No solutions.")
 
@@ -137,6 +138,35 @@ class IterativeLP:
             optimal_value += info['holding_cost'] * truth_function(round(net_replenishment_period, 3))
 
         return optimal_value
+
+    def update_model(self):
+        self.model.remove(self.model.getConstrs())
+        self.model.remove(self.model.getVars())
+
+        # outbound service time, S
+        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
+         for node in self.nodes.keys()]
+
+        #  inbound service time, SI
+        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="SI_" + node)
+         for node in self.nodes.keys()]
+
+        self.model.update()
+        for j, info in self.nodes.items():
+            S = self.model.getVarByName("S_" + j)
+            SI = self.model.getVarByName("SI_" + j)
+            lead_time = info['lead_time']
+            self.model.addConstr(S - SI, GRB.LESS_EQUAL, lead_time, name="c1_" + j)
+
+            if not info['sink']:
+                S_bar = info['demand_service_time']
+                self.model.addConstr(S, GRB.LESS_EQUAL, S_bar, name="c2_" + j)
+
+            for i in info['source']:
+                S_i = self.model.getVarByName("S_" + i)
+                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0, name="c3_" + i + "_" + j)
+
+        self.model.update()
 
 
 def parse_results(instance: IterativeLP) -> None:
