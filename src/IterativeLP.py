@@ -43,7 +43,7 @@ class IterativeLP:
             S = self.model.getVarByName("S_" + j)
             SI = self.model.getVarByName("SI_" + j)
             lead_time = info['lead_time']
-            self.model.addConstr(S - SI, GRB.LESS_EQUAL, lead_time, name="c1_" + j)
+            self.model.addConstr(SI + lead_time - S, GRB.GREATER_EQUAL, 0.0, name="c1_" + j)
 
             if not info['sink']:
                 S_bar = info['demand_service_time']
@@ -51,7 +51,7 @@ class IterativeLP:
 
             for i in info['source']:
                 S_i = self.model.getVarByName("S_" + i)
-                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0, name="c3_" + i + "_" + j)
+                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0.0, name="c3_" + i + "_" + j)
 
         # add objective function
         self.obj = None
@@ -94,11 +94,12 @@ class IterativeLP:
             if self.model.status == GRB.OPTIMAL:
                 # print("Solution: \n {}".format(self.model.getVars()))
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
+                # parse_results(self)
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
                 self.update_para()
-                self.update_model()
+                # self.update_model()   # all static constraints, we don't need to update model
             else:
                 raise DefinedException("No solutions.")
 
