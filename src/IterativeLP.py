@@ -171,11 +171,13 @@ class IterativeLP:
 
 
 def parse_results(instance: IterativeLP) -> None:
-    for j, info in instance.nodes.items():
-        SI = instance.model.getVarByName("SI_"+j)
-        S = instance.model.getVarByName("S_" + j)
-        print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
-        print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+    with open("Lp solution.txt", "w") as f:
+        for j, info in instance.nodes.items():
+            SI = instance.model.getVarByName("SI_"+j)
+            S = instance.model.getVarByName("S_" + j)
+            print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+            print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+            f.write("{}\t{}\n".format(j, SI.x+info['lead_time']-S.x))
 
 
 if __name__ == "__main__":
