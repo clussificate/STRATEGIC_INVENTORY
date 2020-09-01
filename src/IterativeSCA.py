@@ -35,7 +35,7 @@ class IterativeSCA:
         self.iteration = 0
         self.nodes = nodes
         self.start_point = start_points["start_points"]
-        print("sp: {}, info: {}".format(self.start_point[0], self.start_point[1]))
+        # print("sp: {}, info: {}".format(self.start_point[0], self.start_point[1]))
 
         self.node_to_label = defaultdict(int)
         self.label_to_node = defaultdict(str)
@@ -58,7 +58,7 @@ class IterativeSCA:
             initial_betas = [x[1] for x in initial_params]
             self.alpha = dict(zip(self.label_to_node.keys(), initial_alphas))
             self.beta = dict(zip(self.label_to_node.keys(), initial_betas))
-        elif str.lower(self.start_point[0]) == "lp":
+        elif str.lower(self.start_point[0]) == "warm":
             self.alpha = defaultdict(float)
             self.beta = defaultdict(float)
             for node_id in self.label_to_node:
@@ -68,8 +68,8 @@ class IterativeSCA:
         else:
             raise DefinedException("Incorrect parameter for start_point")
 
-        print("initial alphas: {}".format(self.alpha))
-        print("initial betas: {}".format(self.beta))
+        # print("initial alphas: {}".format(self.alpha))
+        # print("initial betas: {}".format(self.beta))
 
         # initial model
         self.model = gp.Model("IterativeSCA")
@@ -121,6 +121,8 @@ class IterativeSCA:
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
                 # parse_results(self)
                 # print("Solution: \n {}".format(self.model.getVars()))
+
+                # if self.termination_criterion("always"):
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
@@ -139,7 +141,9 @@ class IterativeSCA:
         self.model.setObjective(self.obj, GRB.MINIMIZE)
         self.model.optimize()
 
-    def termination_criterion(self):
+    def termination_criterion(self, always=None):
+        if always == "always":
+            return False
 
         flag = False
         err = 0
@@ -163,11 +167,11 @@ class IterativeSCA:
             node_id = self.node_to_label[j]
             net_replenishment_period = round(self.SI[node_id].x + info['lead_time'] - self.S[node_id].x, 3)
 
-            print("---------------------------------------")
-            print("Current node: {}".format(j))
-            print("Current Net X:{}".format(net_replenishment_period))
-            print("previous alpha: {}".format(self.alpha[node_id]))
-            print("previous beta: {}".format(self.beta[node_id]))
+            # print("---------------------------------------")
+            # print("Current node: {}".format(j))
+            # print("Current Net X:{}".format(net_replenishment_period))
+            # print("previous alpha: {}".format(self.alpha[node_id]))
+            # print("previous beta: {}".format(self.beta[node_id]))
 
             if abs(self.alpha[node_id] * net_replenishment_period + self.beta[node_id]) - true_function(
                     net_replenishment_period) < 0.01:
@@ -175,8 +179,8 @@ class IterativeSCA:
             else:
                 self.alpha[node_id], self.beta[node_id] = cal_coefficient(net_replenishment_period)
 
-            print("updated alpha: {}".format(self.alpha[node_id]))
-            print("update beta: {}".format(self.beta[node_id]))
+            # print("updated alpha: {}".format(self.alpha[node_id]))
+            # print("update beta: {}".format(self.beta[node_id]))
 
     def update_model(self):
         # Iteration constraints
@@ -207,8 +211,8 @@ def parse_results(instance: IterativeSCA) -> None:
         node_id = instance.node_to_label[j]
         SI = instance.SI[node_id]
         S = instance.S[node_id]
-        print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
-        print("Net replenishment period: {}".format(SI.x + info['lead_time'] - S.x))
+        print("Node: {}, SI:{:.3f}, S: {:.3f}".format(j, SI.x, S.x))
+        print("Net replenishment period: {:.3f}".format(SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":
@@ -220,12 +224,12 @@ if __name__ == "__main__":
             node, net_replenishment = line.strip().split("\t")
             start_point[node] = float(net_replenishment)
 
-    # IterativeSCA = IterativeSCA(nodes=Nodes, start_points=("lp", start_point))
-    IterativeSCA = IterativeSCA(nodes=Nodes, start_points=(1, None))
+    IterativeSCA = IterativeSCA(nodes=Nodes, start_points=("random", start_point))
+    # IterativeSCA = IterativeSCA(nodes=Nodes, start_points=(1, None))
 
     start = time.time()
     IterativeSCA.iter_process()
     IterativeSCA.cal_optimal_value()
-    print("optimal value: {}".format(IterativeSCA.optimal_value))
     parse_results(IterativeSCA)
+    print("optimal value: {}".format(IterativeSCA.optimal_value))
     print("Used cpu time：{}".format(time.time() - start))

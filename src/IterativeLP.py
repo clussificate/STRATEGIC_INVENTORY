@@ -121,8 +121,8 @@ class IterativeLP:
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
             print("-------------------------")
-            print("Current X: {}".format(net_replenishment_period))
-            print("Current alpha: {}".format(self.alpha[j]))
+            # print("Current X: {}".format(net_replenishment_period))
+            # print("Current alpha: {}".format(self.alpha[j]))
             if self.alpha[j] * net_replenishment_period == truth_function(net_replenishment_period):
                 continue
             else:
@@ -171,7 +171,7 @@ class IterativeLP:
 
 
 def parse_results(instance: IterativeLP) -> None:
-    with open("Lp solution.txt", "w") as f:
+    with open("lp solution.txt", "w") as f:
         for j, info in instance.nodes.items():
             SI = instance.model.getVarByName("SI_"+j)
             S = instance.model.getVarByName("S_" + j)
@@ -183,9 +183,10 @@ def parse_results(instance: IterativeLP) -> None:
 if __name__ == "__main__":
 
     Nodes = BOMGraph("DAG.txt").nodes
+
     start = time.time()
     ILP = IterativeLP(nodes=Nodes)
     ILP.iteration_process()
-    print("Optimal value: {}".format(ILP.optimal_value))
     parse_results(ILP)
+    print("Optimal value: {}".format(ILP.optimal_value))
     print("Used cpu time：{}".format(time.time()-start))

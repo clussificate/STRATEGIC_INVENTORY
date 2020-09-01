@@ -146,6 +146,6 @@ if __name__ == "__main__":
     # print(Nodes)
     IMIP = IterativeMIP(nodes=Nodes)
     IMIP.iteration_process()
-    print("Optimal value: {}".format(IMIP.optimal_value))
     parse_result(IMIP)
+    print("Optimal value: {}".format(IMIP.optimal_value))
     print("Used cpu time：{}".format(time.time() - start))

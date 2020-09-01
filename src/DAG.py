@@ -5,43 +5,50 @@
 @file:DAG.py
 @Desc:
 """
-from random import randint
+from random import randint, random
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot, graphviz_layout
 import matplotlib.pyplot as plt
 
 
-def gen_DAG(min_weight=3, max_weight=5, min_height=1, max_height=5,
-            percent=30, save="DAG.txt"):
+def gen_DAG(min_width=3, max_width=5, min_length=1, max_length=5,
+            percent=0.3, save="DAG.txt"):
     """
     Randomly generate a DAG type supply chain
-    :param min_weight: minimal number of nodes of each echelon
-    :param max_weight: maximal number of nodes of each echelon
-    :param min_height: minimal length of the supply chain
-    :param max_height: maximal length of the supply chain
+    :param min_width: minimal number of nodes of each echelon
+    :param max_width: maximal number of nodes of each echelon
+    :param min_length: minimal length of the supply chain
+    :param max_length: maximal length of the supply chain
     :param percent: probability of generating a link
     :param save: file path
-    :return: None
+    :return: number of nodes. num of edges
     todo: fix the bug that the disconnected graph is generated when probability is small. Hint: make sure more than one link between two lays
     """
-    nodes = min_weight + randint(0, max_weight - min_weight)
+    nodes = min_width + randint(0, max_width - min_width)
     print("initial nodes: {}".format(nodes))
-    heights = min_height + randint(0, max_height - min_height)
+    heights = min_length + randint(0, max_length - min_length)
     print("Heights: {}".format(heights))
+    num_of_edges = 0
+    node_set = set()
     with open(save, 'w') as f:
         for i in range(0, heights + 1):  # no action in loop 0, so increase 1.
-            new_nodes = min_weight + randint(0, max_weight - min_weight)
+            new_nodes = min_width + randint(0, max_width - min_width)
             # print("Weights: {}，loop {}".format(new_nodes, i))
             print("Gen new nodes: {}".format(new_nodes))
             for j in range(0, nodes):
                 for k in range(0, new_nodes):
-                    if randint(0, 100) < percent:
+                    if random() < percent:
+                        num_of_edges += 1
+                        node_set.add(j)
+                        node_set.add(k+nodes)
                         print("{}--->{}".format(j, k + nodes))
                         f.write(str(j))
                         f.write("\t")
                         f.write(str(k + nodes))
                         f.write('\n')
             nodes = nodes + new_nodes
+    num_of_nodes = len(node_set)
+    return num_of_nodes, num_of_edges
 
 
 def vis_graph(file):
@@ -57,7 +64,7 @@ def vis_graph(file):
 
 
 if __name__ == "__main__":
-    gen_DAG(min_weight=3, max_weight=5, min_height=3, max_height=5,
-            percent=30, save="DAG.txt")
+    num_of_nodes, node_of_edges = gen_DAG(min_width=5, max_width=10, min_length=5, max_length=7,
+                                          percent=0.25, save="DAG.txt")
+    print("Number of nodes: {}, number of edges: {}".format(num_of_nodes, node_of_edges))
     # vis_graph("DAG.txt")
-

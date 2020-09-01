@@ -65,14 +65,15 @@ class IterativePW:
 
         for j, info in self.nodes.items():
 
-            self.model.addConstr(self.SI[j] + info["lead_time"] - self.S[j], GRB.GREATER_EQUAL, 0.0, name="r[1]_"+str(j))
+            self.model.addConstr(self.SI[j] + info["lead_time"] - self.S[j], GRB.GREATER_EQUAL, 0.0,
+                                 name="r[1]_" + str(j))
 
             if not info['sink']:
-                self.model.addConstr(self.S[j], GRB.LESS_EQUAL, info['demand_service_time'], name="r[2]_"+str(j))
+                self.model.addConstr(self.S[j], GRB.LESS_EQUAL, info['demand_service_time'], name="r[2]_" + str(j))
 
             for i in info['source']:
                 i = int(i)
-                self.model.addConstr(self.SI[j] - self.S[i], GRB.GREATER_EQUAL, 0.0, "r[3]_"+str(j)+"_"+str(i))
+                self.model.addConstr(self.SI[j] - self.S[i], GRB.GREATER_EQUAL, 0.0, "r[3]_" + str(j) + "_" + str(i))
 
         self.model.update()
         # print(self.model.getConstrs())
@@ -135,10 +136,10 @@ class IterativePW:
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x,  3)
+            net_replenishment_period = round(self.SI[j].x + info['lead_time'] - self.S[j].x, 3)
             # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
-            optimal_value += info['holding_cost']*true_function(net_replenishment_period)
+            optimal_value += info['holding_cost'] * true_function(net_replenishment_period)
 
         return optimal_value
 
@@ -153,19 +154,19 @@ class IterativePW:
 
     def update_para(self):
         for j, info in self.nodes.items():
-            print("-----------------------")
-            print("current j:{} of R{}".format(j, self.R[j]))
-            print("current u:{}".format([self.u[j, r].x for r in range(self.R[j])]))
+            # print("-----------------------")
+            # print("current j:{} of R{}".format(j, self.R[j]))
+            # print("current u:{}".format([self.u[j, r].x for r in range(self.R[j])]))
 
             interval_index = [r for r in range(self.R[j]) if abs(self.u[j, r].x - 1) <= 0.001][0]
-            print("current index {}".format(interval_index))
-            print("Current z {}".format([self.z[j, r].x for r in range(self.R[j])]))
+            # print("current index {}".format(interval_index))
+            # print("Current z {}".format([self.z[j, r].x for r in range(self.R[j])]))
 
             net_replenishment_period = self.SI[j].x + info['lead_time'] - self.S[j].x
 
-            print("Net X: {}".format(net_replenishment_period))
-            print("Previous Node: {}".format(self.M[j][interval_index]))
-            print("Previous M: {}".format(self.M[j]))
+            # print("Net X: {}".format(net_replenishment_period))
+            # print("Previous Node: {}".format(self.M[j][interval_index]))
+            # print("Previous M: {}".format(self.M[j]))
 
             if abs(net_replenishment_period - self.M[j][interval_index]) <= 0.1:
                 continue
@@ -206,9 +207,9 @@ class IterativePW:
             if len(set(update_M)) != len(update_M):
                 raise DefinedException("Incorrect M")
 
-            print("update para alpha:{}".format(self.alpha[j]))
-            print("update para beta:{}".format(self.beta[j]))
-            print("update para M:{}".format(self.M[j]))
+            # print("update para alpha:{}".format(self.alpha[j]))
+            # print("update para beta:{}".format(self.beta[j]))
+            # print("update para M:{}".format(self.M[j]))
 
     def update_constraints(self):
         self.pw_c0 = self.model.addConstrs(
@@ -236,10 +237,13 @@ class IterativePW:
 
 
 def parse_results(instance: IterativePW) -> None:
-    for j, _ in instance.nodes.items():
-        SI = instance.SI[j]
-        S = instance.S[j]
-        print("Node: {}, SI:{}, S: {}".format(j, round(SI.x, 3), round(S.x,3)))
+    with open("pw solution.txt", "w") as f:
+        for j, info in instance.nodes.items():
+            SI = instance.SI[j]
+            S = instance.S[j]
+            print("Node: {}, SI:{}, S: {}".format(j, round(SI.x, 3), round(S.x, 3)))
+            print("Net replenishment period: {}".format(round(SI.x + info['lead_time'] - S.x), 3))
+            f.write("{}\t{}\n".format(j, SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":
@@ -249,8 +253,7 @@ if __name__ == "__main__":
     start = time.time()
     IterativePW.iter_process()
     IterativePW.cal_optimal_value()
-    print("optimal value: {}".format(IterativePW.optimal_value))
     parse_results(IterativePW)
+    print("optimal value: {}".format(IterativePW.optimal_value))
     print("Used cpu time：{}".format(time.time() - start))
     # print(IterativePW.model.getConstrs())
-
