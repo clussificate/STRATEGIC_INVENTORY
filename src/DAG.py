@@ -64,7 +64,7 @@ def vis_graph(file):
 
 
 if __name__ == "__main__":
-    num_of_nodes, node_of_edges = gen_DAG(min_width=5, max_width=10, min_length=5, max_length=7,
-                                          percent=0.25, save="DAG.txt")
+    num_of_nodes, node_of_edges = gen_DAG(min_width=200, max_width=300, min_length=5, max_length=7,
+                                          percent=0.05, save="DAG.txt")
     print("Number of nodes: {}, number of edges: {}".format(num_of_nodes, node_of_edges))
     # vis_graph("DAG.txt")

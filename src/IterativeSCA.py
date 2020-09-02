@@ -15,7 +15,6 @@ import random
 from collections import defaultdict
 
 true_function = np.sqrt
-M = 9999
 
 
 def cal_coefficient(x):
@@ -211,8 +210,8 @@ def parse_results(instance: IterativeSCA) -> None:
         node_id = instance.node_to_label[j]
         SI = instance.SI[node_id]
         S = instance.S[node_id]
-        print("Node: {}, SI:{:.3f}, S: {:.3f}".format(j, SI.x, S.x))
-        print("Net replenishment period: {:.3f}".format(SI.x + info['lead_time'] - S.x))
+        # print("Node: {}, SI:{:.3f}, S: {:.3f}".format(j, SI.x, S.x))
+        # print("Net replenishment period: {:.3f}".format(SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":

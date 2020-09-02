@@ -56,12 +56,13 @@ class IterativeLP:
         # add objective function
         self.obj = None
         self.optimal_value = None
+        self.update_error = None
         # print(self.model.getVars())
 
     def termination_criterion(self):
 
         flag = False
-        error = 0
+        err = 0
         for i, info in self.nodes.items():
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x)
@@ -72,13 +73,17 @@ class IterativeLP:
             # print("current error:{}".format(info['holding_cost'] * abs(
             #     self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))))
 
-            error += info['holding_cost'] * abs(
+            err += info['holding_cost'] * abs(
                 self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))
             # print("Cum error: {}".format(error))
-        print("Current error: {} of iteration: {}".format(error, self.iteration))
-        if error <= self.epsilon / self.N:
-            flag = True
+        print("Current error: {} of iteration: {}".format(err, self.iteration))
 
+        if err <= self.epsilon / self.N:
+            flag = True
+        if self.update_error == err:
+            flag = True
+            print("No reduced error, iteration ends.")
+        self.update_error = err
         return flag
 
     def iteration_process(self):
@@ -93,6 +98,8 @@ class IterativeLP:
 
             if self.model.status == GRB.OPTIMAL:
                 # print("Solution: \n {}".format(self.model.getVars()))
+                print("Current optimal solution of approximation function: {}".format(
+                    self.model.getObjective().getValue()))
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
                 # parse_results(self)
                 if self.termination_criterion():
@@ -120,7 +127,7 @@ class IterativeLP:
             # print(self.model.getVarByName("S_" + i).x)
             net_replenishment_period = (
                     self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
-            print("-------------------------")
+            # print("-------------------------")
             # print("Current X: {}".format(net_replenishment_period))
             # print("Current alpha: {}".format(self.alpha[j]))
             if self.alpha[j] * net_replenishment_period == truth_function(net_replenishment_period):
@@ -128,7 +135,7 @@ class IterativeLP:
             else:
                 self.alpha[j] = truth_function(net_replenishment_period) / net_replenishment_period
 
-            print("Updated alpha: {}".format(self.alpha[j]))
+            # print("Updated alpha: {}".format(self.alpha[j]))
 
     def cal_optimal_value(self):
         optimal_value = 0
@@ -173,15 +180,14 @@ class IterativeLP:
 def parse_results(instance: IterativeLP) -> None:
     with open("lp solution.txt", "w") as f:
         for j, info in instance.nodes.items():
-            SI = instance.model.getVarByName("SI_"+j)
+            SI = instance.model.getVarByName("SI_" + j)
             S = instance.model.getVarByName("S_" + j)
-            print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
-            print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
-            f.write("{}\t{}\n".format(j, SI.x+info['lead_time']-S.x))
+            # print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+            # print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+            f.write("{}\t{}\n".format(j, SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":
-
     Nodes = BOMGraph("DAG.txt").nodes
 
     start = time.time()
@@ -189,4 +195,4 @@ if __name__ == "__main__":
     ILP.iteration_process()
     parse_results(ILP)
     print("Optimal value: {}".format(ILP.optimal_value))
-    print("Used cpu time：{}".format(time.time()-start))
+    print("Used cpu time：{}".format(time.time() - start))

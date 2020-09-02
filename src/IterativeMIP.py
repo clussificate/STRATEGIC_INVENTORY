@@ -76,6 +76,8 @@ class IterativeMIP(IterativeLP):
             self.optimization()
 
             if self.model.status == GRB.OPTIMAL:
+                print("Current optimal solution of approximation function: {}".format(
+                    self.model.getObjective().getValue()))
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
                 # print("Current appr obj value: {}".format(self.model.objVal))
                 # print("Current true obj value: {}".format(self.cal_optimal_value()))
@@ -106,19 +108,19 @@ class IterativeMIP(IterativeLP):
             net_replenishment_period = round((
                     self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x), 3)
             y = self.y[int(j)].x
-            print("---------------------------------------")
-            print("Current Net X:{}".format(net_replenishment_period))
-            print("Current y: {}".format(y))
-            print("previous alpha: {}".format(self.alpha[j]))
-            print("previous beta: {}".format(self.beta[j]))
+            # print("---------------------------------------")
+            # print("Current Net X:{}".format(net_replenishment_period))
+            # print("Current y: {}".format(y))
+            # print("previous alpha: {}".format(self.alpha[j]))
+            # print("previous beta: {}".format(self.beta[j]))
 
             if abs(self.alpha[j] * net_replenishment_period + y * self.beta[j]) - truth_function(net_replenishment_period) < 0.01:
                 continue
             else:
                 self.alpha[j], self.beta[j] = cal_coefficient(net_replenishment_period)
 
-            print("updated alpha: {}".format(self.alpha[j]))
-            print("update beta: {}".format(self.beta[j]))
+            # print("updated alpha: {}".format(self.alpha[j]))
+            # print("update beta: {}".format(self.beta[j]))
 
     def cal_optimal_value(self):
         optimal_value = 0
@@ -132,11 +134,13 @@ class IterativeMIP(IterativeLP):
 
 
 def parse_result(instance:IterativeMIP) -> None:
-    for j, info in instance.nodes.items():
-        SI = instance.model.getVarByName("SI_"+j)
-        S = instance.model.getVarByName("S_" + j)
-        print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
-        print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+    with open("mip solution.txt", "w") as f:
+        for j, info in instance.nodes.items():
+            SI = instance.model.getVarByName("SI_"+j)
+            S = instance.model.getVarByName("S_" + j)
+            print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+            print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+            f.write("{}\t{}\n".format(j, SI.x + info['lead_time'] - S.x))
 
 
 if __name__ == "__main__":

@@ -91,6 +91,8 @@ class IterativePW:
 
             if self.model.status == GRB.OPTIMAL:
                 # print("Solution: \n {}".format(self.model.getVars()))
+                print("Current optimal solution of approximation function: {}".format(
+                    self.model.getObjective().getValue()))
                 print("Current optimal solution of true function: {}".format(self.cal_optimal_value()))
                 if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
