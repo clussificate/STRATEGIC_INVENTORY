@@ -11,8 +11,9 @@ import numpy as np
 from BOMGraph import BOMGraph
 from utils import DefinedException
 import time
+from collections import defaultdict
 
-truth_function = np.sqrt
+true_function = np.sqrt
 
 
 class IterativeLP:
@@ -20,38 +21,44 @@ class IterativeLP:
         self.epsilon = epsilon
         self.iteration = 0
         self.nodes = nodes
-        self.N = len(self.nodes)
+
+        self.node_to_label = defaultdict(int)
+        self.label_to_node = defaultdict(str)
+
+        for node in nodes:
+            num = len(self.node_to_label)
+            self.node_to_label[node] = num
+            self.label_to_node[num] = node
+
+        self.N = len(self.node_to_label)
+
         # initial alpha for each node
-        self.alpha = dict(zip(self.nodes.keys(), [1] * self.N))
+        self.alpha = dict(zip(self.label_to_node.keys(), [1] * self.N))
 
         # initial model
         self.model = gp.Model("IterativeLP")
         self.model.setParam("OutputFlag", False)
 
-        # outbound service time, S
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
-         for node in self.nodes.keys()]
-
-        #  inbound service time, SI
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="SI_" + node)
-         for node in self.nodes.keys()]
+        # add variables
+        # inbound service time
+        self.SI = self.model.addVars(self.N, lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='SI')
+        # outbound service time
+        self.S = self.model.addVars(self.N, lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='S')
 
         self.model.update()
 
         # add constraints
         for j, info in self.nodes.items():
-            S = self.model.getVarByName("S_" + j)
-            SI = self.model.getVarByName("SI_" + j)
-            lead_time = info['lead_time']
-            self.model.addConstr(SI + lead_time - S, GRB.GREATER_EQUAL, 0.0, name="c1_" + j)
+            node_id = self.node_to_label[j]
+
+            self.model.addConstr(self.SI[node_id] + info["lead_time"] - self.S[node_id], GRB.GREATER_EQUAL, 0.0,)
 
             if not info['sink']:
-                S_bar = info['demand_service_time']
-                self.model.addConstr(S, GRB.LESS_EQUAL, S_bar, name="c2_" + j)
+                self.model.addConstr(self.S[node_id], GRB.LESS_EQUAL, info['demand_service_time'])
 
-            for i in info['source']:
-                S_i = self.model.getVarByName("S_" + i)
-                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0.0, name="c3_" + i + "_" + j)
+            for source_node in info['source']:
+                source_node_id = self.node_to_label[source_node]
+                self.model.addConstr(self.SI[node_id] - self.S[source_node_id], GRB.GREATER_EQUAL, 0.0)
 
         # add objective function
         self.obj = None
@@ -63,9 +70,9 @@ class IterativeLP:
 
         flag = False
         err = 0
-        for i, info in self.nodes.items():
-            net_replenishment_period = (
-                    self.model.getVarByName("SI_" + i).x + info['lead_time'] - self.model.getVarByName("S_" + i).x)
+        for j, info in self.nodes.items():
+            node_id = self.node_to_label[j]
+            net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
 
             # print("Net replenishment: {} ".format(net_replenishment_period))
             # print("alpha:{}".format(self.alpha[i]))
@@ -74,7 +81,7 @@ class IterativeLP:
             #     self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))))
 
             err += info['holding_cost'] * abs(
-                self.alpha[i] * net_replenishment_period - truth_function(net_replenishment_period))
+                self.alpha[node_id] * net_replenishment_period - true_function(net_replenishment_period))
             # print("Cum error: {}".format(error))
         print("Current error: {} of iteration: {}".format(err, self.iteration))
 
@@ -113,37 +120,38 @@ class IterativeLP:
     def optimization(self):
         self.obj = gp.LinExpr()
         for j, info in self.nodes.items():
-            SI = self.model.getVarByName("SI_" + j)
-            S = self.model.getVarByName("S_" + j)
+            node_id = self.node_to_label[j]
+            SI = self.SI[node_id]
+            S = self.S[node_id]
             lead_time = info['lead_time']
             holding_cost = info['holding_cost']
-            alpha = self.alpha[j]
+            alpha = self.alpha[node_id]
             self.obj += holding_cost * alpha * (SI + lead_time - S)
         self.model.setObjective(self.obj, GRB.MINIMIZE)
         self.model.optimize()
 
     def update_para(self):
         for j, info in self.nodes.items():
-            # print(self.model.getVarByName("S_" + i).x)
-            net_replenishment_period = (
-                    self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
+            node_id = self.node_to_label[j]
+            net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
             # print("-------------------------")
             # print("Current X: {}".format(net_replenishment_period))
-            # print("Current alpha: {}".format(self.alpha[j]))
-            if self.alpha[j] * net_replenishment_period == truth_function(net_replenishment_period):
+            # print("Current alpha: {}".format(self.alpha[node_id]))
+            if self.alpha[node_id] * net_replenishment_period == true_function(net_replenishment_period):
                 continue
             else:
-                self.alpha[j] = truth_function(net_replenishment_period) / net_replenishment_period
+                self.alpha[node_id] = true_function(net_replenishment_period) / net_replenishment_period
 
             # print("Updated alpha: {}".format(self.alpha[j]))
 
     def cal_optimal_value(self):
         optimal_value = 0
         for j, info in self.nodes.items():
-            net_replenishment_period = (
-                    self.model.getVarByName("SI_" + j).x + info['lead_time'] - self.model.getVarByName("S_" + j).x)
+            node_id = self.node_to_label[j]
+            net_replenishment_period = round(self.SI[node_id].x + info['lead_time'] - self.S[node_id].x, 3)
+            # print(net_replenishment_period)
             # print("current j:{}, net x:{}".format(j, net_replenishment_period))
-            optimal_value += info['holding_cost'] * truth_function(round(net_replenishment_period, 3))
+            optimal_value += info['holding_cost'] * true_function(net_replenishment_period)
 
         return optimal_value
 
@@ -151,28 +159,23 @@ class IterativeLP:
         self.model.remove(self.model.getConstrs())
         self.model.remove(self.model.getVars())
 
-        # outbound service time, S
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="S_" + node)
-         for node in self.nodes.keys()]
+        # inbound service time
+        self.SI = self.model.addVars(self.N, lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='SI')
+        # outbound service time
+        self.S = self.model.addVars(self.N, lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='S')
 
-        #  inbound service time, SI
-        [self.model.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="SI_" + node)
-         for node in self.nodes.keys()]
-
-        self.model.update()
+        # add constraints
         for j, info in self.nodes.items():
-            S = self.model.getVarByName("S_" + j)
-            SI = self.model.getVarByName("SI_" + j)
-            lead_time = info['lead_time']
-            self.model.addConstr(S - SI, GRB.LESS_EQUAL, lead_time, name="c1_" + j)
+            node_id = self.node_to_label[j]
+
+            self.model.addConstr(self.SI[node_id] + info["lead_time"] - self.S[node_id], GRB.GREATER_EQUAL, 0.0, )
 
             if not info['sink']:
-                S_bar = info['demand_service_time']
-                self.model.addConstr(S, GRB.LESS_EQUAL, S_bar, name="c2_" + j)
+                self.model.addConstr(self.S[node_id], GRB.LESS_EQUAL, info['demand_service_time'])
 
-            for i in info['source']:
-                S_i = self.model.getVarByName("S_" + i)
-                self.model.addConstr(SI - S_i, GRB.GREATER_EQUAL, 0, name="c3_" + i + "_" + j)
+            for source_node in info['source']:
+                source_node_id = self.node_to_label[source_node]
+                self.model.addConstr(self.SI[node_id] - self.S[source_node_id], GRB.GREATER_EQUAL, 0.0)
 
         self.model.update()
 
@@ -180,8 +183,9 @@ class IterativeLP:
 def parse_results(instance: IterativeLP) -> None:
     with open("lp solution.txt", "w") as f:
         for j, info in instance.nodes.items():
-            SI = instance.model.getVarByName("SI_" + j)
-            S = instance.model.getVarByName("S_" + j)
+            node_id = instance.node_to_label[j]
+            SI = instance.SI[node_id]
+            S = instance.S[node_id]
             # print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
             # print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
             f.write("{}\t{}\n".format(j, SI.x + info['lead_time'] - S.x))

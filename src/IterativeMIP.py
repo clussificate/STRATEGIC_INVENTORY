@@ -22,7 +22,7 @@ def cal_coefficient(x):
     :return: derivation and intercept of sqrt function
     """
     if x == 0:
-        return 0, 0
+        return -9999, 0
     derivation = (1/2) * np.power(x, -1/2)
     intercept = 1/2 * np.power(x, 1/2)
     return derivation, intercept

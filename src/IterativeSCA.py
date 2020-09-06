@@ -94,7 +94,7 @@ class IterativeSCA:
         for j, info in self.nodes.items():
             node_id = self.node_to_label[j]
 
-            self.model.addConstr(self.SI[node_id] + info["lead_time"] - self.S[node_id], GRB.GREATER_EQUAL, 0.0, )
+            self.model.addConstr(self.SI[node_id] + info["lead_time"] - self.S[node_id], GRB.GREATER_EQUAL, 0.0,)
 
             if not info['sink']:
                 self.model.addConstr(self.S[node_id], GRB.LESS_EQUAL, info['demand_service_time'])
@@ -121,8 +121,7 @@ class IterativeSCA:
                 # parse_results(self)
                 # print("Solution: \n {}".format(self.model.getVars()))
 
-                # if self.termination_criterion("always"):
-                if self.termination_criterion():
+                if self.termination_criterion(""):
                     self.optimal_value = self.cal_optimal_value()
                     break
                 self.update_para()
@@ -223,7 +222,7 @@ if __name__ == "__main__":
             node, net_replenishment = line.strip().split("\t")
             start_point[node] = float(net_replenishment)
 
-    IterativeSCA = IterativeSCA(nodes=Nodes, start_points=("random", start_point))
+    IterativeSCA = IterativeSCA(nodes=Nodes, start_points=("warm", start_point))
     # IterativeSCA = IterativeSCA(nodes=Nodes, start_points=(1, None))
 
     start = time.time()
