@@ -121,7 +121,8 @@ class IterativeSCA:
                 # parse_results(self)
                 # print("Solution: \n {}".format(self.model.getVars()))
 
-                if self.termination_criterion(""):
+                # if self.termination_criterion("always"):
+                if self.termination_criterion():
                     self.optimal_value = self.cal_optimal_value()
                     break
                 self.update_para()
@@ -149,6 +150,8 @@ class IterativeSCA:
             node_id = self.node_to_label[j]
             net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
             appr_function = self.t[node_id].x
+            # print("node {}, err :{}".format(node_id, round(abs(appr_function - true_function(
+            # net_replenishment_period)),6)))
             err += info['holding_cost'] * abs(appr_function - true_function(round(net_replenishment_period, 3)))
         print("Current error: {} of iteration: {}".format(err, self.iteration))
 
@@ -163,8 +166,8 @@ class IterativeSCA:
     def update_para(self):
         for j, info in self.nodes.items():
             node_id = self.node_to_label[j]
-            net_replenishment_period = round(self.SI[node_id].x + info['lead_time'] - self.S[node_id].x, 3)
-
+            net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
+            # self.alpha[node_id], self.beta[node_id] = cal_coefficient(net_replenishment_period)
             # print("---------------------------------------")
             # print("Current node: {}".format(j))
             # print("Current Net X:{}".format(net_replenishment_period))
