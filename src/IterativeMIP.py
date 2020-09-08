@@ -33,7 +33,17 @@ class IterativeMIP(IterativeLP):
         super().__init__(nodes, epsilon)
         self.alpha = dict(zip(self.label_to_node.keys(), [1 / 2] * self.N))
         self.beta = dict(zip(self.label_to_node.keys(), [1 / 2] * self.N))
+
         self.y = self.model.addVars(self.N, vtype=GRB.BINARY, name='y')
+        self.model.setParam("OutputFlag", True)
+
+        for j, info in self.nodes.items():
+            node_id = self.node_to_label[j]
+
+            S = self.S[node_id]
+            SI = self.SI[node_id]
+            lead_time = info['lead_time']
+            self.model.addConstr((SI+lead_time-S), GRB.LESS_EQUAL, M*self.y[node_id])
 
     def termination_criterion(self):
 
@@ -43,7 +53,7 @@ class IterativeMIP(IterativeLP):
         # print("current beta: {}".format(self.beta))
         for j, info in self.nodes.items():
             node_id = self.node_to_label[j]
-            net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
+            net_replenishment_period = round(self.SI[node_id].x + info['lead_time'] - self.S[node_id].x, 6)
 
             y = self.y[node_id].x
 
@@ -99,22 +109,22 @@ class IterativeMIP(IterativeLP):
     def update_para(self):
         for j, info in self.nodes.items():
             node_id = self.node_to_label[j]
-            net_replenishment_period = self.SI[node_id].x + info['lead_time'] - self.S[node_id].x
+            net_replenishment_period = round(self.SI[node_id].x + info['lead_time'] - self.S[node_id].x, 6)
             y = self.y[node_id].x
             # print("---------------------------------------")
             # print("Current Net X:{}".format(net_replenishment_period))
             # print("Current y: {}".format(y))
-            # print("previous alpha: {}".format(self.alpha[j]))
-            # print("previous beta: {}".format(self.beta[j]))
+            # print("previous alpha: {}".format(self.alpha[node_id]))
+            # print("previous beta: {}".format(self.beta[node_id]))
 
             if abs(self.alpha[node_id] * net_replenishment_period + y * self.beta[node_id]) -\
                     round(truth_function(net_replenishment_period), 3) < 0.01:
                 continue
             else:
-                self.alpha[node_id], self.beta[node_id] = cal_coefficient(net_replenishment_period)
+                self.alpha[node_id], self.beta[node_id] = cal_coefficient(round(net_replenishment_period, 3))
 
-            # print("updated alpha: {}".format(self.alpha[j]))
-            # print("update beta: {}".format(self.beta[j]))
+            # print("updated alpha: {}".format(self.alpha[node_id]))
+            # print("update beta: {}".format(self.beta[node_id]))
 
     def cal_optimal_value(self):
         optimal_value = 0
@@ -133,8 +143,8 @@ def parse_result(instance:IterativeMIP) -> None:
             node_id = instance.node_to_label[j]
             SI = instance.SI[node_id]
             S = instance.S[node_id]
-            print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
-            print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
+            # print("Node: {}, SI:{}, S: {}".format(j, SI.x, S.x))
+            # print("Net replenishment period: {}".format(SI.x+info['lead_time']-S.x))
             f.write("{}\t{}\n".format(j, SI.x + info['lead_time'] - S.x))
 
 
